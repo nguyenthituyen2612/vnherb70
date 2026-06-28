@@ -42,6 +42,18 @@ st.markdown('<p class="eyebrow">VNHerb-70 · QĐ4664/QĐ-BYT 2014</p>', unsafe_a
 st.title("Trạm thu mẫu ảnh cây thuốc")
 st.caption("Chụp một bức — app chạy IQA, định loại PlantNet, gán bộ phận và ghi vào dataset.")
 
+# ---------------- Google Drive config (từ st.secrets nếu có) ----------------
+try:
+    if "gcp_service_account" in st.secrets and "gdrive_folder_id" in st.secrets:
+        _gdrive_config = {
+            "credentials": dict(st.secrets["gcp_service_account"]),
+            "folder_id": st.secrets["gdrive_folder_id"],
+        }
+    else:
+        _gdrive_config = None
+except Exception:
+    _gdrive_config = None
+
 # ---------------- session ----------------
 ss = st.session_state
 ss.setdefault("img_bytes", None)
@@ -67,6 +79,11 @@ with st.sidebar:
                              help="BẮT BUỘC để ghi vào source_log.csv (theo P2).")
     st.caption("Không có license → ảnh vẫn lưu & ghi verification_log, "
                "nhưng source_log.csv bỏ qua đúng quy tắc P2.")
+    st.divider()
+    if _gdrive_config:
+        st.success("☁ Google Drive: đã kết nối")
+    else:
+        st.caption("☁ Google Drive: chưa cấu hình\n(thêm secrets để bật)")
 
 # ---------------- P1 capture ----------------
 st.header("1 · Chụp / tải ảnh mẫu")
@@ -243,6 +260,7 @@ if ss.img is not None:
                 dataset_root, ss.img_bytes, ss.md5, meta,
                 source_id=source_id, url_goc=url_goc,
                 license=license_, verified_by=collector,
+                gdrive_config=_gdrive_config,
             )
             st.success(f"Đã lưu → `{info['relative_path']}`")
             if info["source_logged"]:
@@ -251,6 +269,10 @@ if ss.img is not None:
                 st.caption("⚠ Bỏ qua source_log.csv vì thiếu license (đúng quy tắc P2). "
                            "verification_log.csv vẫn được ghi.")
             st.caption(f"Logs & ảnh nằm trong thư mục **{dataset_root}/**.")
+            if info.get("gdrive") == "ok":
+                st.caption("☁ Đã sao lưu lên Google Drive.")
+            elif "gdrive_error" in info:
+                st.warning(f"⚠ GDrive lỗi: {info['gdrive_error']}")
 
 st.divider()
 st.caption("VNHerb-70 · 70 loài cây thuốc nam · Ảnh chỉ route 'pending_expert' — "

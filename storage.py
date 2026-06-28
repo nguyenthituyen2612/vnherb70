@@ -77,7 +77,8 @@ def save_record(root: str,
                 source_id: str = "field_capture",
                 url_goc: str = "",
                 license: str = "",
-                verified_by: str = "") -> Dict:
+                verified_by: str = "",
+                gdrive_config: Optional[Dict] = None) -> Dict:
     """
     Lưu ảnh + append vào source_log & verification_log.
     Trả về dict gồm relative_path đã lưu.
@@ -129,5 +130,43 @@ def save_record(root: str,
             organ, meta["organ"]["organ_subtype"] or "", rel_path,
         ])
 
-    return {"relative_path": rel_path, "abs_path": abs_path,
-            "source_logged": source_logged}
+    result: Dict = {"relative_path": rel_path, "abs_path": abs_path,
+                    "source_logged": source_logged}
+
+    if gdrive_config:
+        try:
+            import gdrive as gd
+            import json as _json
+            svc = gd.build_service(gdrive_config["credentials"])
+            root_id = gdrive_config["folder_id"]
+
+            path_parts = rel_dir.replace("\\", "/").split("/")
+            folder_id = gd.resolve_path(svc, root_id, path_parts)
+            gd.upload_bytes(svc, folder_id, fname, image_bytes, "image/jpeg")
+            gd.upload_bytes(svc, folder_id, fname + ".json",
+                            _json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"),
+                            "application/json")
+
+            if source_logged:
+                tax = meta["taxonomy"]
+                gd.append_csv(svc, root_id, SOURCE_LOG, SOURCE_HEADER, [
+                    tax["scientific_name"] or "", tax["common_name_vi"] or "", organ,
+                    source_id, url_goc, license, today, md5,
+                ])
+
+            pn = meta["identification"]
+            top = pn["candidates"][0] if pn["candidates"] else {}
+            tax = meta["taxonomy"]
+            gd.append_csv(svc, root_id, VERIF_LOG, VERIF_HEADER, [
+                md5, tax["species_id"] or "", tax["scientific_name"] or "",
+                tax["common_name_vi"] or "", top.get("scientific_name", ""),
+                top.get("score", ""), tax["in_catalogue"],
+                meta["iqa"]["passed"] if meta["iqa"] else "",
+                meta["routing"]["destination"], verified_by, today,
+                organ, meta["organ"]["organ_subtype"] or "", rel_path,
+            ])
+            result["gdrive"] = "ok"
+        except Exception as exc:
+            result["gdrive_error"] = str(exc)
+
+    return result

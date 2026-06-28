@@ -1,0 +1,7 @@
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
+VNHerb70_dataset/
+*.jpg
+*.png
+*.webp
