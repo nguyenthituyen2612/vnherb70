@@ -262,17 +262,15 @@ if ss.img is not None:
                 license=license_, verified_by=collector,
                 gdrive_config=_gdrive_config,
             )
-            st.success(f"Đã lưu → `{info['relative_path']}`")
+            if info["backend"] == "gdrive":
+                st.success(f"☁ Đã lưu lên Google Drive → `{info['relative_path']}`")
+            else:
+                st.success(f"Đã lưu local → `{info['relative_path']}`")
             if info["source_logged"]:
                 st.caption("✓ Đã ghi source_log.csv (có license).")
             else:
                 st.caption("⚠ Bỏ qua source_log.csv vì thiếu license (đúng quy tắc P2). "
                            "verification_log.csv vẫn được ghi.")
-            st.caption(f"Logs & ảnh nằm trong thư mục **{dataset_root}/**.")
-            if info.get("gdrive") == "ok":
-                st.caption("☁ Đã sao lưu lên Google Drive.")
-            elif "gdrive_error" in info:
-                st.warning(f"⚠ GDrive lỗi: {info['gdrive_error']}")
 
 st.divider()
 st.caption("VNHerb-70 · 70 loài cây thuốc nam · Ảnh chỉ route 'pending_expert' — "
